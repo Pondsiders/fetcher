@@ -1,5 +1,6 @@
 """Turn a URL into Markdown, one rung at a time.
 
+0. A GitHub repo, tree or blob page: fetch the raw file instead, if it exists.
 1. Ask the server for Markdown. If it sends Markdown or plain text, done.
 2. If it sends HTML, have Trafilatura pull the content out as Markdown.
 3. Anything else, or an HTML page with nothing in it, fails loud.
@@ -13,12 +14,14 @@ from typing import Literal
 import httpx
 import trafilatura
 
+from fetcher.github import candidates as github_candidates
+
 ACCEPT = "text/markdown, text/plain;q=0.9, text/html;q=0.8, */*;q=0.1"
 USER_AGENT = "fetcher/0.1 (+https://bonnie.tail8bd569.ts.net/Tools/fetcher)"
 MARKDOWN_TYPES = ("text/markdown", "text/x-markdown")
 HTML_TYPES = ("text/html", "application/xhtml+xml")
 
-Via = Literal["markdown", "plain", "trafilatura"]
+Via = Literal["github", "markdown", "plain", "trafilatura"]
 
 
 @dataclass(frozen=True)
@@ -82,6 +85,10 @@ def fetch(url: str, *, timeout: float = 20.0) -> Fetched:
     with httpx.Client(
         follow_redirects=True, timeout=timeout, headers=headers
     ) as client:
+        for raw_url, extra in github_candidates(url):
+            raw = client.get(raw_url, headers=extra)
+            if raw.is_success:
+                return Fetched(raw_url, "github", raw.text)
         response = client.get(url)
     final_url = str(response.url)
     content_type = response.headers.get("content-type", "")

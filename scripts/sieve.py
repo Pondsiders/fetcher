@@ -1,7 +1,7 @@
 """Run a pile of URLs through fetcher and record which hole each one fell through.
 
 Reads URLs on stdin, one per line. Writes TSV on stdout:
-outcome, status, media type, url.
+outcome, status, detail, words, url.
 """
 
 from __future__ import annotations
@@ -11,20 +11,21 @@ from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 
-from fetcher.fetch import NotMarkdownError, fetch, media_type
+from fetcher.fetch import NothingExtractedError, NotMarkdownError, fetch, media_type
 
 
-def probe(url: str) -> tuple[str, str, str, str]:
+def probe(url: str) -> tuple[str, str, str, str, str]:
     """Classify one URL."""
     try:
         page = fetch(url)
     except NotMarkdownError as e:
         outcome = "error-status" if e.status >= 400 else "refused"
-        return outcome, str(e.status), media_type(e.content_type), url
+        return outcome, str(e.status), media_type(e.content_type), "0", url
+    except NothingExtractedError:
+        return "empty", "200", "text/html", "0", url
     except httpx.HTTPError as e:
-        return "unreachable", "-", type(e).__name__, url
-    kind = "markdown" if page.content_type != "text/plain" else "plain"
-    return kind, "200", page.content_type, url
+        return "unreachable", "-", type(e).__name__, "0", url
+    return page.via, "200", "", str(len(page.text.split())), url
 
 
 def main() -> None:

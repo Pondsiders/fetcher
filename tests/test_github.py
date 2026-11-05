@@ -4,7 +4,7 @@ import pytest
 
 from fetcher.github import API, API_RAW, RAW, candidates
 
-REPO_README = [
+REPO_README: list[tuple[str, dict[str, str]]] = [
     (f"{RAW}/owner/repo/HEAD/README.md", {}),
     (f"{API}/repos/owner/repo/readme", API_RAW),
 ]

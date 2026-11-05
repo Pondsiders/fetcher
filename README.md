@@ -1,16 +1,32 @@
 # fetcher
 
-Turn a URL into Markdown for an agent to read, or say loudly why not.
+Turn a URL into something an AI agent can read, or say loudly why not.
 
     fetcher URL
 
-It climbs a short ladder:
+Text comes back on stdout as Markdown. Anything else (a PDF, an image, a zip) is saved to a temp folder and fetcher prints its path, so the agent can open the file with whatever tool suits it. A line on stderr always says what happened.
 
-0. A GitHub repo, tree or blob page: fetch the raw README or file instead of the page around it. (Tries `raw.githubusercontent.com` first, then the API, which allows 60 unauthenticated calls an hour. Issues and PRs take the normal path.)
-1. Ask the server for Markdown (`Accept: text/markdown`). Markdown or plain text comes back as is.
-2. If the server sends HTML, Trafilatura extracts the content as Markdown, with a metadata header (title, author, date).
-3. Anything else fails loud: error statuses, PDFs, and HTML pages with nothing in them (usually JavaScript shells).
+## The ladder
 
-Text goes to stdout and exits 0. A page it can't convert exits 1, an unreachable URL exits 2, and the reason is on stderr either way. Stderr also says which rung the text came from.
+0. **GitHub repo, folder or file pages** fetch the raw README or file instead of the page around it. It tries `raw.githubusercontent.com` first, then the GitHub API, which allows 60 unauthenticated calls an hour. Issues, PRs and anything else on GitHub take the normal path.
+1. **Ask for Markdown.** The request sends `Accept: text/markdown`, and some sites (Cloudflare's "Markdown for Agents," many docs sites, Hugging Face papers) answer with Markdown. That, and any other text (plain, JSON, XML), comes back as is.
+2. **HTML** goes through [Trafilatura](https://trafilatura.readthedocs.io/), which pulls out the main content as Markdown with a short metadata header (title, author, date).
+3. **Everything else** is saved to `$TMPDIR/fetcher/<hash>/<name>`, using the server's suggested filename or the URL's, with an extension that matches the content type. To keep a file, copy it somewhere.
 
-`scripts/sieve.py` runs a pile of URLs through it and tallies what came back.
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Text on stdout, or a saved file's path on stdout |
+| 1 | The server said no: an error status, or an HTML page with no content in it (usually one built by JavaScript) |
+| 2 | Couldn't reach it: DNS, TLS, timeout |
+
+## What it won't do
+
+It doesn't run JavaScript, log in, or get past bot walls. A page that needs a real browser fails with exit 1 and says so.
+
+## Install
+
+    uv tool install git+https://github.com/Pondsiders/fetcher
+
+`scripts/sieve.py` runs a pile of URLs through fetcher and tallies what came back, one TSV row per URL.

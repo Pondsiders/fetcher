@@ -1,9 +1,12 @@
 [project]
 name = "fetcher"
 version = "0.1.0"
-description = "Turn a URL into Markdown for an agent to read, or say loudly why not."
+description = "Turn a URL into something an AI agent can read, or say loudly why not."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
+    { name = "Jeffery Harrell" },
     { name = "Alpha", email = "alphafornow@agentmail.to" }
 ]
 requires-python = ">=3.12"
